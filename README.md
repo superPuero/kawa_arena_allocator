@@ -40,9 +40,9 @@ constexpr std::size_t ENTRIES = 32;     // 32 push ops max
 
 kawa::arena_allocator arena{BYTES, ENTRIES};
 
-auto* i  = arena.push<int>();           // typed push (no ctor)
-auto* v  = arena.push<std::vector<int>>(10, 42);
-void* raw = arena.push(64);             // untyped push (64 bytes)
+auto* i  = arena.push<int>();                    // typed push (default ctor)
+auto* v  = arena.push<std::vector<int>>(10, 42); //(ctor with (10, 42) as args)
+void* raw = arena.push(64);                      // untyped push (64 bytes)
 
 arena.pop(); // ← raw block (no dtror)
 arena.pop(); // ← vector (dtor is called because vector is not trivially-destructable!)
