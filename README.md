@@ -75,7 +75,7 @@ arena.pop(); // ← vector (dtor is called because vector is not trivially-destr
 | `size_t capacity() const`                       | total bytes available                                    |
 | `size_t occupied() const`                       | current bytes in use                                     |
 
-> **Note**: `pop()` now calls the destructor of non‑trivially destructible types.  
+> **Note**: `pop()` calls the destructor of non‑trivially destructible types.  
 > For raw memory allocations (`push(size)`), no destructor is called.
 
 ---
