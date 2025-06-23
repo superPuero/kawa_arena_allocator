@@ -41,7 +41,7 @@ constexpr std::size_t ENTRIES = 32;     // 32 push ops max
 kawa::arena_allocator arena{BYTES, ENTRIES};
 
 auto* i  = arena.push<int>();                    // typed push (default ctor)
-auto* v  = arena.push<std::vector<int>>(10, 42); // (ctor with (10, 42) as args)
+auto* v  = arena.push<std::vector<int>>(10, 42); // ctor with (10, 42) as args
 void* raw = arena.push(64);                      // untyped push (64 bytes)
 
 arena.pop(); // ← raw block (no dtror)
@@ -79,13 +79,6 @@ arena.pop(); // ← vector (dtor is called because vector is not trivially-destr
 > For raw memory allocations (`push(size)`), no destructor is called.
 
 ---
-
-## ⚙️ Design Highlights
-
-* Stores raw buffer + entry stack side‑by‑side for cache friendliness.
-* Records the exact byte stride of every push, ensuring perfect pop.
-* Move‑constructible – you can transfer an arena without copying memory.
-* Alignment gaps are tracked in the stride, so memory is never leaked.
 
 ```
  ┌──────────── arena_allocator ────────────┐
