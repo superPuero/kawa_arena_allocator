@@ -57,7 +57,7 @@ arena.pop(); // ← vector (remember to call dtor if non-trivial!)
     auto* big = scope.push<double[128]>();
     scope.push(256);          // scratch buffer
 
-    // rolled back when leaving the block
+    // automatically rolled back when guard goes out of scope (calls destructors too)
 } // ← all allocations in scope are popped here
 ```
 
@@ -65,18 +65,19 @@ arena.pop(); // ← vector (remember to call dtor if non-trivial!)
 
 ## 📝 API Overview
 
-| Member                                          | Notes                                         |
-| ----------------------------------------------- | --------------------------------------------- |
-| `arena_allocator(size_t bytes, size_t entries)` | create arena                                  |
-| `T* push<T>()`                                  | reserve `sizeof(T)` bytes (no ctor)           |
-| `T* push_and_construct<T>(Args&&...)`           | reserve & in‑place construct                  |
-| `void* push(size_t bytes)`                      | raw memory block                              |
-| `void pop()`                                    | pop last push (LIFO)                          |
-| `arena_appocator::scoped scope()`               | returns RAII guard for automatic roll-back    |
-| `size_t capacity() const`                       | total bytes available                         |
-| `size_t occupied() const`                       | current bytes in use                          |
+| Member                                          | Notes                                                    |
+| ----------------------------------------------- | ---------------------------------------------------------|
+| `arena_allocator(size_t bytes, size_t entries)` | create arena                                             |
+| `T* push<T>()`                                  | reserve `sizeof(T)` bytes (no ctor)                      |
+| `T* push_and_construct<T>(Args&&...)`           | reserve & in‑place construct                             |
+| `void* push(size_t bytes)`                      | raw memory block                                         |
+| `void pop()`                                    | Pops the last push (LIFO) and calls destructor if needed |
+| `arena_appocator::scoped scope()`               | returns RAII guard for automatic roll-back               |
+| `size_t capacity() const`                       | total bytes available                                    |
+| `size_t occupied() const`                       | current bytes in use                                     |
 
-> **Important**: `pop()` **does not** run destructors. For non‑trivial types, call the destructor manually before popping.
+> **Note**: `pop()` now calls the destructor of non‑trivially destructible types.  
+> For raw memory allocations (`push(size)`), no destructor is called.
 
 ---
 
