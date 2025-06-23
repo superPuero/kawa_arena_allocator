@@ -7,7 +7,6 @@
 
 #if defined(_MSC_VER)
 #include <intrin.h>
-#include <mutex>
 #define KW_ARENA_DEBUG_BREAK() __debugbreak()
 #elif defined(__GNUC__) || defined(__clang__)
 #define KW_ARENA_DEBUG_BREAK() __builtin_trap()
@@ -94,10 +93,10 @@ namespace kawa
 		};
 
 	public:
-		inline arena_allocator(size_t size, size_t entries ) noexcept
+		inline arena_allocator(size_t bytes, size_t entries) noexcept
 		{
-			_capacity = size;
-			_data = static_cast<char*>(::operator new(size, std::align_val_t{ 8 }));
+			_capacity = bytes;
+			_data = static_cast<char*>(::operator new(bytes, std::align_val_t{ 8 }));
 		
 			_current = _data;
 

@@ -19,11 +19,11 @@ int main()
 
     // Push and construct: allocates and constructs Obj2 using provided arguments (none in this case)
     Obj4* a4 = arena.push<Obj4>();
-    std::cout << "Typed push Obj4 at " << a4 << '\n';
+    std::cout << "Push Obj4 at " << a4 << '\n';
 
     // Push and construct: allocates and constructs Obj2 using provided arguments (12 in this case)
     Obj2* a2 = arena.push<Obj2>(12);
-    std::cout << "Push and construct Obj2 at " << a2 << '\n';
+    std::cout << "Pushed Obj2 at " << a2 << '\n';
 
     // Raw push: allocate 5 bytes directly
     void* raw_ptr = arena.push(5);
@@ -49,8 +49,8 @@ int main()
 
     // pop() queue pops items in reverse order (LIFO)
     arena.pop(); // raw allocation (5 bytes) — no destructor called
-    arena.pop(); // Obj2 - no destructor call for trivially destructable object
-    arena.pop(); // Obj4 — destructor called automatically
+    arena.pop(); // Obj2 - destructor called automatically
+    arena.pop(); // Obj4 — no destructor call for trivially destructable object
 
     std::cout << "Arena occupied bytes after manual pop: " << arena.occupied() << '\n';
 

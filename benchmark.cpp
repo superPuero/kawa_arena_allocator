@@ -5,29 +5,30 @@
 
 struct TestData 
 {
+    ~TestData()
+    {
+        volatile int x;
+    }
     int a[16]; // 64 bytes
 };
 
 int main() 
 {
     constexpr size_t arenas_size = 1024 * 1024 * 32; // 32 MB
-    constexpr size_t iterations = 500000; // 32MB / 64
+    constexpr size_t entries = 500'000; // 32MB / 64
 
-    kawa::arena_allocator arena(arenas_size, iterations);
+    kawa::arena_allocator arena(arenas_size, entries);
 
     using clock = std::chrono::high_resolution_clock;
 
     auto start_push = clock::now();
 
     volatile size_t sanity_sum = 0;
-    for (size_t i = 0; i < iterations; ++i) 
+    for (size_t i = 0; i < entries; ++i)
     {
-        //TestData* ptr = (TestData*)std::malloc(sizeof(TestData));
-
         auto* ptr = arena.push<TestData>();
         ptr->a[0] = static_cast<int>(i);
         sanity_sum += ptr->a[0];
-        //std::free(ptr);
     }
 
     auto end_push = clock::now();
@@ -35,7 +36,7 @@ int main()
     // Begin timing for pop
     auto start_pop = clock::now();
 
-    for (size_t i = 0; i < iterations; ++i) 
+    for (size_t i = 0; i < entries; ++i)
     {
         arena.pop();
     }
@@ -45,7 +46,7 @@ int main()
     auto push_duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end_push - start_push).count();
     auto pop_duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end_pop - start_pop).count();
 
-    std::cout << "Pushed " << iterations << " TestData objects\n";
+    std::cout << "Pushed " << entries << " TestData objects\n";
     std::cout << "Sanity check (should be > 0): " << sanity_sum << '\n';
     std::cout << "Memory used after pops: " << arena.occupied() << " bytes\n";
     std::cout << "Push time: " << push_duration << " ns (" << push_duration / 1e6 << " ms)\n";
