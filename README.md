@@ -44,7 +44,7 @@ auto* i  = arena.push<int>();                    // typed push (default ctor)
 auto* v  = arena.push<std::vector<int>>(10, 42); // ctor with (10, 42) as args
 void* raw = arena.push(64);                      // untyped push (64 bytes)
 
-arena.pop(); // ← raw block (no dtror)
+arena.pop(); // ← raw block (no dtor)
 arena.pop(); // ← vector (dtor is called because vector is not trivially-destructable!)
 ```
 
