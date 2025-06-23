@@ -35,19 +35,17 @@ There are no other dependencies.
 ```cpp
 #include "arena_allocator.h"
 
-constexpr std::size_t BYTES   = 1024;   // 1 KiB
+constexpr std::size_t BYTES   = 1024;   // 1 KiB
 constexpr std::size_t ENTRIES = 32;     // 32 push ops max
 
 kawa::arena_allocator arena{BYTES, ENTRIES};
 
-// create a scoped guard with the new helper
-auto guard = arena.scope();  // same as kawa::arena_allocator::scoped{arena}
-
 auto* i  = arena.push<int>();           // typed push (no ctor)
 auto* v  = arena.push_and_construct<std::vector<int>>(10, 42);
-void* raw = arena.push(64);             // untyped push (64 bytes)
+void* raw = arena.push(64);             // untyped push (64 bytes)
 
-// automatically rolled back when guard goes out of scope
+arena.pop(); // ← raw block
+arena.pop(); // ← vector (remember to call dtor if non-trivial!)
 ```
 
 ### Scoped guard usage
