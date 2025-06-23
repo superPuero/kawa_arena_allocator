@@ -1,10 +1,10 @@
-# kawa::arena\_allocator
+# 🏟 kawa::arena\_allocator
 
 ![language](https://img.shields.io/badge/C%2B%2B-17-blue.svg)
 ![status](https://img.shields.io/badge/stability-stable-brightgreen)
 ![license](https://img.shields.io/badge/license-MIT-green.svg)
 
-A **single-header**, *zero-overhead* arena (stack) allocator for modern C++.
+ **kawa::arena\_allocator** is a **single-header**, *zero-overhead* arena (stack) allocator for modern C++.
 It delivers lightning-fast **push / pop** semantics, automatic pointer
 alignment, and an optional RAII **scoped** helper that unwinds all local
 allocations when leaving the scope – no exceptions, no surprises.
