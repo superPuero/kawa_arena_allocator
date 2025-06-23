@@ -7,6 +7,7 @@
 
 #if defined(_MSC_VER)
 #include <intrin.h>
+#include <mutex>
 #define KW_ARENA_DEBUG_BREAK() __debugbreak()
 #elif defined(__GNUC__) || defined(__clang__)
 #define KW_ARENA_DEBUG_BREAK() __builtin_trap()
@@ -54,17 +55,10 @@ namespace kawa
 
 			public:
 				template<typename T, typename...Args>
-				inline T* push_and_construct(Args&&...args) noexcept
+				inline T* push(Args&&...args) noexcept
 				{
 					_counter++;
-					return _source.push_and_construct<T>(std::forward<Args>(args)...);
-				}
-
-				template<typename T>
-				inline T* push()  noexcept
-				{
-					_counter++;
-					return _source.push<T>();
+					return _source.push<T>(std::forward<Args>(args)...);
 				}
 
 				inline void* push(size_t size)	noexcept
@@ -109,6 +103,7 @@ namespace kawa
 
 			_entries_capacity = entries;
 			_entries = new size_t[entries];
+			_destructors = new destructor_fn_t[entries]();
 		}
 
 		inline arena_allocator(const arena_allocator&) noexcept = delete;
@@ -133,11 +128,12 @@ namespace kawa
 		{
 			::operator delete(_data, std::align_val_t{ alignof(std::max_align_t) });
 			delete[] _entries;
+			delete[] _destructors;
 		}
 
 
 		template<typename T,  typename...Args>
-		inline T* push_and_construct(Args&&...args) noexcept
+		inline T* push(Args&&...args) noexcept
 		{	
 			KW_ARENA_ASSERT_MSG((_current - _data + sizeof(T)) <= _capacity, "Arena allocator: Not enough memory to push object.");
 			KW_ARENA_ASSERT_MSG(_entries_occupied < _entries_capacity, "Arena allocator: Maximum entries exceeded.");
@@ -146,31 +142,28 @@ namespace kawa
 			size_t space = _capacity - (_current - _data);
 			if (std::align(alignof(T), sizeof(T), aligned, space)) 
 			{
-				_entries[_entries_occupied++] = sizeof(T) + ((size_t)aligned - (size_t)_current);
+				_entries[_entries_occupied] = sizeof(T) + ((size_t)aligned - (size_t)_current);
 				_current = static_cast<char*>(aligned) + sizeof(T);
+
+				if constexpr (!std::is_trivially_destructible_v<T>)
+				{
+					_destructors[_entries_occupied] = [](void* ptr) 
+						{
+							reinterpret_cast<T*>(ptr)->~T();
+						};
+				}
+				else
+				{
+					_destructors[_entries_occupied] = nullptr;
+				}
+
+				_entries_occupied++;
+
 				return new(aligned) T(std::forward<Args>(args)...);
 			}
 
 			KW_ARENA_ASSERT_MSG((_current - _data + sizeof(T)) <= _capacity, "Arena allocator: Not enough aligned memory to push object.");
-		}
-
-		template<typename T>
-		inline T* push() noexcept
-		{
-			KW_ARENA_ASSERT_MSG((_current - _data + sizeof(T)) <= _capacity, "Arena allocator: Not enough memory to push object.");
-			KW_ARENA_ASSERT_MSG(_entries_occupied < _entries_capacity, "Arena allocator: Maximum entries exceeded.");
-
-			void* aligned = _current;
-			size_t space = _capacity - (_current - _data);
-			if (std::align(alignof(T), sizeof(T), aligned, space))
-			{
-				_entries[_entries_occupied++] = sizeof(T) + ((size_t)aligned - (size_t)_current);
-				_current = static_cast<char*>(aligned) + sizeof(T);
-				return reinterpret_cast<T*>(aligned);
-			}
-
-			KW_ARENA_ASSERT_MSG((_current - _data + sizeof(T)) <= _capacity, "Arena allocator: Not enough aligned memory to push object.");
-		}
+		}		
 
 		inline void* push(size_t size)	noexcept
 		{
@@ -187,7 +180,18 @@ namespace kawa
 		inline void pop() noexcept
 		{
 			KW_ARENA_ASSERT_MSG(_entries_occupied, "Arena allocator: overusing pop()");
-			_current -= _entries[--_entries_occupied];
+
+			_entries_occupied--;
+
+			_current -= _entries[_entries_occupied];
+
+			destructor_fn_t dtor = _destructors[_entries_occupied];
+
+			if (dtor)
+			{
+				dtor(_current);
+				dtor = nullptr;
+			}
 		}
 
 		inline size_t capacity() const noexcept
@@ -207,14 +211,18 @@ namespace kawa
 		}
 
 	private:
-		char*	_data				= nullptr;
-		char*	_current			= nullptr;
+		using destructor_fn_t = void(*)(void*);
 
-		size_t	_capacity			= 0;
+		char*	_data					= nullptr;
+		char*	_current				= nullptr;
 
-		size_t	_entries_capacity	= 0;
-		size_t* _entries			= nullptr;
-		size_t	_entries_occupied	= 0;
+		size_t	_capacity				= 0;
+
+		size_t	_entries_capacity		= 0;
+		size_t* _entries				= nullptr;
+		size_t	_entries_occupied		= 0;
+
+		destructor_fn_t* _destructors	= nullptr;
 
 	};
 }

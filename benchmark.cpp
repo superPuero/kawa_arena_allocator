@@ -22,9 +22,12 @@ int main()
     volatile size_t sanity_sum = 0;
     for (size_t i = 0; i < iterations; ++i) 
     {
+        //TestData* ptr = (TestData*)std::malloc(sizeof(TestData));
+
         auto* ptr = arena.push<TestData>();
         ptr->a[0] = static_cast<int>(i);
         sanity_sum += ptr->a[0];
+        //std::free(ptr);
     }
 
     auto end_push = clock::now();
