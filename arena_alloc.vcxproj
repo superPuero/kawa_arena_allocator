@@ -130,7 +130,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="arena_allocator.cpp" />
-    <ClCompile Include="main.cpp" />
+    <ClCompile Include="benchmark.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="arena_allocator.h" />

@@ -15,10 +15,10 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="main.cpp">
+    <ClCompile Include="arena_allocator.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="arena_allocator.cpp">
+    <ClCompile Include="benchmark.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

@@ -37,7 +37,7 @@ namespace kawa
 				scoped(arena_allocator& aa)	noexcept
 					: _source(aa)
 				{
-
+					_begin_occupied = _source.occupied();
 				};
 
 				scoped(const scoped&) = delete;
@@ -77,6 +77,11 @@ namespace kawa
 					return _source.pop();
 				}
 
+				inline size_t scoped_occupied() const noexcept
+				{
+					return _source.occupied() - _begin_occupied;
+				}
+
 				inline size_t occupied() const noexcept
 				{
 					return _source.occupied();
@@ -89,6 +94,7 @@ namespace kawa
 
 			private:
 				arena_allocator& _source;
+				size_t _begin_occupied = 0;
 				size_t _counter = 0;
 		};
 

@@ -1,22 +1,22 @@
 #include <chrono>
 #include <iostream>
 #include <cassert>
-#include "arena_allocator.h" // Adjust path as needed
+#include "arena_allocator.h" 
 
-struct TestData {
+struct TestData 
+{
     int a[16]; // 64 bytes
 };
 
 int main() {
-    constexpr size_t arenaSize = 1024 * 1024 * 32; // 32 MB
-    constexpr size_t iterations = 500000;
+    constexpr size_t arenas_size = 1024 * 1024 * 32; // 32 MB
+    constexpr size_t iterations = 500000; // 32MB / 64
 
-    kawa::arena_allocator arena(arenaSize, iterations);
+    kawa::arena_allocator arena(arenas_size, iterations);
 
-    using Clock = std::chrono::high_resolution_clock;
+    using clock = std::chrono::high_resolution_clock;
 
-    // Begin timing for push
-    auto start_push = Clock::now();
+    auto start_push = clock::now();
 
     volatile size_t sanity_sum = 0;
     for (size_t i = 0; i < iterations; ++i) 
@@ -26,18 +26,18 @@ int main() {
         sanity_sum += ptr->a[0];
     }
 
-    auto end_push = Clock::now();
+    auto end_push = clock::now();
 
     // Begin timing for pop
-    auto start_pop = Clock::now();
+    auto start_pop = clock::now();
 
-    for (size_t i = 0; i < iterations; ++i) {
+    for (size_t i = 0; i < iterations; ++i) 
+    {
         arena.pop();
     }
 
-    auto end_pop = Clock::now();
+    auto end_pop = clock::now();
 
-    // Metrics
     auto push_duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end_push - start_push).count();
     auto pop_duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end_pop - start_pop).count();
 
@@ -47,6 +47,5 @@ int main() {
     std::cout << "Push time: " << push_duration << " ns (" << push_duration / 1e6 << " ms)\n";
     std::cout << "Pop time:  " << pop_duration << " ns (" << pop_duration / 1e6 << " ms)\n";
 
-    // Final validation
     assert(arena.occupied() == 0);
 }
