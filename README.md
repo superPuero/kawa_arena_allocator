@@ -41,11 +41,11 @@ constexpr std::size_t ENTRIES = 32;     // 32 push ops max
 kawa::arena_allocator arena{BYTES, ENTRIES};
 
 auto* i  = arena.push<int>();           // typed push (no ctor)
-auto* v  = arena.push_and_construct<std::vector<int>>(10, 42);
+auto* v  = arena.push<std::vector<int>>(10, 42);
 void* raw = arena.push(64);             // untyped push (64 bytes)
 
-arena.pop(); // ← raw block
-arena.pop(); // ← vector (remember to call dtor if non-trivial!)
+arena.pop(); // ← raw block (no dtror)
+arena.pop(); // ← vector (dtor is called because vector is not trivially-destructable!)
 ```
 
 ### Scoped guard usage
@@ -68,8 +68,7 @@ arena.pop(); // ← vector (remember to call dtor if non-trivial!)
 | Member                                          | Notes                                                    |
 | ----------------------------------------------- | ---------------------------------------------------------|
 | `arena_allocator(size_t bytes, size_t entries)` | create arena                                             |
-| `T* push<T>()`                                  | reserve `sizeof(T)` bytes (no ctor)                      |
-| `T* push_and_construct<T>(Args&&...)`           | reserve & in‑place construct                             |
+| `T* push<T>(Args&&...)`                         | reserve & in place construction of T with provided args  |
 | `void* push(size_t bytes)`                      | raw memory block                                         |
 | `void pop()`                                    | Pops the last push (LIFO) and calls destructor if needed |
 | `arena_appocator::scoped scope()`               | returns RAII guard for automatic roll-back               |
