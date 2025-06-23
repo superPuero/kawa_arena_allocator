@@ -1,0 +1,208 @@
+#pragma once
+#include <memory>
+#include <iostream>
+#include <new>
+
+#if defined(_DEBUG)
+
+#if defined(_MSC_VER)
+#include <intrin.h>
+#define KW_ARENA_DEBUG_BREAK() __debugbreak()
+#elif defined(__GNUC__) || defined(__clang__)
+#define KW_ARENA_DEBUG_BREAK() __builtin_trap()
+#else
+#define KW_ARENA_DEBUG_BREAK() ((void)0)
+#endif
+
+#define KW_ARENA_ASSERT_MSG(expr, msg) \
+        do { \
+            if (!(expr)) { \
+                std::cout << msg << '\n'; \
+                KW_ARENA_DEBUG_BREAK(); \
+            } \
+        } while(0)
+
+#else
+#define KW_ARENA_ASSERT_MSG(expr, msg) ((void)0)
+#endif
+
+namespace kawa
+{
+	class arena_allocator
+	{
+	public:
+		class scoped
+		{
+			public:
+				scoped(arena_allocator& aa)	noexcept
+					: _source(aa)
+				{
+
+				};
+
+				scoped(const scoped&) = delete;
+				scoped(scoped&&) = delete;
+
+				~scoped() noexcept
+				{
+					for (size_t i = 0; i < _counter; i++)
+					{
+						_source.pop();
+					}
+				}
+
+			public:
+				template<typename T, typename...Args>
+				inline T* push_and_construct(Args&&...args) noexcept
+				{
+					_counter++;
+					return _source.push_and_construct<T>(std::forward<Args>(args)...);
+				}
+
+				template<typename T>
+				inline T* push()  noexcept
+				{
+					_counter++;
+					return _source.push<T>();
+				}
+
+				inline void* push(size_t size)	noexcept
+				{
+					_counter++;
+					return _source.push(size);
+				}
+
+				inline void pop() noexcept
+				{
+					return _source.pop();
+				}
+
+				inline size_t occupied() const noexcept
+				{
+					return _source.occupied();
+				}
+
+				inline size_t capacity() const noexcept
+				{
+					return _source.capacity();
+				}
+
+			private:
+				arena_allocator& _source;
+				size_t _counter = 0;
+		};
+
+	public:
+		inline arena_allocator(size_t size, size_t entries ) noexcept
+		{
+			_capacity = size;
+			_data = static_cast<char*>(::operator new(size, std::align_val_t{ 8 }));
+		
+			_current = _data;
+
+			_entries_capacity = entries;
+			_entries = new size_t[entries];
+		}
+
+		inline arena_allocator(const arena_allocator&) noexcept = delete;
+
+		inline arena_allocator(arena_allocator&& other) noexcept
+			: _data(other._data)
+			, _current(other._current)
+			, _capacity(other._capacity)
+			, _entries(other._entries)
+			, _entries_capacity(other._entries_capacity)
+			, _entries_occupied(other._entries_occupied)
+		{
+			other._data = nullptr;
+			other._current = nullptr;
+			other._capacity = 0;
+			other._entries = nullptr;
+			other._entries_occupied = 0;
+			other._entries_capacity = 0;
+		}
+
+		inline ~arena_allocator() noexcept
+		{
+			::operator delete(_data, std::align_val_t{ alignof(std::max_align_t) });
+			delete[] _entries;
+		}
+
+
+		template<typename T,  typename...Args>
+		inline T* push_and_construct(Args&&...args) noexcept
+		{	
+			KW_ARENA_ASSERT_MSG((_current - _data + sizeof(T)) <= _capacity, "Arena allocator: Not enough memory to push object.");
+			KW_ARENA_ASSERT_MSG(_entries_occupied < _entries_capacity, "Arena allocator: Maximum entries exceeded.");
+
+			void* aligned = _current;
+			size_t space = _capacity - (_current - _data);
+			if (std::align(alignof(T), sizeof(T), aligned, space)) 
+			{
+				_entries[_entries_occupied++] = sizeof(T) + ((size_t)aligned - (size_t)_current);
+				_current = static_cast<char*>(aligned) + sizeof(T);
+				return new(aligned) T(std::forward<Args>(args)...);
+			}
+
+			KW_ARENA_ASSERT_MSG((_current - _data + sizeof(T)) <= _capacity, "Arena allocator: Not enough aligned memory to push object.");
+		}
+
+		template<typename T>
+		inline T* push() noexcept
+		{
+			KW_ARENA_ASSERT_MSG((_current - _data + sizeof(T)) <= _capacity, "Arena allocator: Not enough memory to push object.");
+			KW_ARENA_ASSERT_MSG(_entries_occupied < _entries_capacity, "Arena allocator: Maximum entries exceeded.");
+
+			void* aligned = _current;
+			size_t space = _capacity - (_current - _data);
+			if (std::align(alignof(T), sizeof(T), aligned, space))
+			{
+				_entries[_entries_occupied++] = sizeof(T) + ((size_t)aligned - (size_t)_current);
+				_current = static_cast<char*>(aligned) + sizeof(T);
+				return reinterpret_cast<T*>(aligned);
+			}
+
+			KW_ARENA_ASSERT_MSG((_current - _data + sizeof(T)) <= _capacity, "Arena allocator: Not enough aligned memory to push object.");
+		}
+
+		inline void* push(size_t size)	noexcept
+		{
+			KW_ARENA_ASSERT_MSG(size, "Arena allocator: Cannot push zero-sized object.");
+			KW_ARENA_ASSERT_MSG((_current - _data + size) <= _capacity, "Arena allocator: Not enough memory to push object.");
+			KW_ARENA_ASSERT_MSG(_entries_occupied < _entries_capacity, "Arena allocator: Maximum entries exceeded.");
+
+			void* ptr = _current;
+			_current += size;
+			_entries[_entries_occupied++] = size;
+			return ptr;
+		}
+
+		inline void pop() noexcept
+		{
+			KW_ARENA_ASSERT_MSG(_entries_occupied, "Arena allocator: overusing pop()");
+			_current -= _entries[--_entries_occupied];
+		}
+
+		inline size_t capacity() const noexcept
+		{
+			return _capacity;
+		}
+
+		inline size_t occupied() const noexcept
+		{
+			return _current - _data;
+		}
+
+	private:
+		char*	_data				= nullptr;
+		char*	_current			= nullptr;
+
+		size_t	_capacity			= 0;
+
+		size_t	_entries_capacity	= 0;
+		size_t* _entries			= nullptr;
+		size_t	_entries_occupied	= 0;
+
+	};
+}
+
