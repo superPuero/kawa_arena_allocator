@@ -8,7 +8,8 @@ struct TestData
     int a[16]; // 64 bytes
 };
 
-int main() {
+int main() 
+{
     constexpr size_t arenas_size = 1024 * 1024 * 32; // 32 MB
     constexpr size_t iterations = 500000; // 32MB / 64
 

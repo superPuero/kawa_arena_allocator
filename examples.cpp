@@ -7,12 +7,13 @@ struct Obj4 { int i; };
 struct Obj8 { int64_t i64; };
 
 int main()
-{                                         
+{   
+    using namespace kawa;
     constexpr size_t arena_size = 1024;   // 1 KB arena
     constexpr size_t max_entries = 32;    // Max 32 push entries
 
 	// Provide constructor with capacity in bytes, and max ammount of simoltanious entries
-    kawa::arena_allocator arena(arena_size, max_entries);
+    arena_allocator arena(arena_size, max_entries);
 
     std::cout << "Arena capacity: " << arena.capacity() << " bytes\n";
 
@@ -30,7 +31,8 @@ int main()
 
     // Scoped usage example - RAII pop for all pushes inside
     {
-        kawa::arena_allocator::scoped scoped_arena(arena);
+		// Get scoped allocator with scope() method
+        arena_allocator::scoped scoped_arena = arena.scope();
 
         Obj8* a8 = scoped_arena.push<Obj8>();
         std::cout << "Scoped typed push Obj8 at " << a8 << '\n';

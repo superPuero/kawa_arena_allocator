@@ -40,7 +40,8 @@ namespace kawa
 					_begin_occupied = _source.occupied();
 				};
 
-				scoped(const scoped&) = delete;
+				scoped(const scoped& other) noexcept = delete;
+
 				scoped(scoped&&) = delete;
 
 				~scoped() noexcept
@@ -197,6 +198,12 @@ namespace kawa
 		inline size_t occupied() const noexcept
 		{
 			return _current - _data;
+		}
+
+	public:
+		inline arena_allocator::scoped scope() noexcept 
+		{
+			return arena_allocator::scoped(*this);
 		}
 
 	private:
