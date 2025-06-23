@@ -6,8 +6,7 @@
 
 **kawa::arena\_allocator** is a **single‑header**, *zero‑overhead* arena (stack) allocator for modern C++.
 It delivers lightning‑fast **push / pop** semantics, automatic pointer
-alignment, and a handy RAII **scoped** helper – no exceptions, no surprises.
-
+alignment, and a handy RAII **scoped** helper
 ---
 
 ## 🔧 Building & Integrating
