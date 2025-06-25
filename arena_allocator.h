@@ -92,9 +92,9 @@ namespace kawa
 					return _source.occupied() - _begin_occupied;
 				}
 
-				inline size_t scoped_entries_occupied() const noexcept
+				inline size_t scoped_entries() const noexcept
 				{
-					return _source.entries_occupied() - _scoped_entries;
+					return _source.entries() - _scoped_entries;
 				}
 
 			private:
@@ -229,7 +229,7 @@ namespace kawa
 			return _capacity;
 		}
 
-		inline size_t entries_occupied() const noexcept
+		inline size_t entries() const noexcept
 		{
 			return _entries_occupied;
 		}
