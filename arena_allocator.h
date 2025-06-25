@@ -46,9 +46,10 @@ namespace kawa
 
 				~scoped() noexcept
 				{
-					for (size_t i = 0; i < _counter; i++)
+					while(_scoped_entries)
 					{
 						_source.pop();
+						_scoped_entries--;
 					}
 				}
 
@@ -56,13 +57,13 @@ namespace kawa
 				template<typename T, typename...Args>
 				inline T* push(Args&&...args) noexcept
 				{
-					_counter++;
+					_scoped_entries++;
 					return _source.push<T>(std::forward<Args>(args)...);
 				}
 
 				inline void* push(size_t size)	noexcept
 				{
-					_counter++;
+					_scoped_entries++;
 					return _source.push(size);
 				}
 
@@ -71,9 +72,9 @@ namespace kawa
 					return _source.pop();
 				}
 
-				inline size_t scoped_occupied() const noexcept
+				inline size_t entries_occupied() const noexcept
 				{
-					return _source.occupied() - _begin_occupied;
+					return _source.entries_occupied();
 				}
 
 				inline size_t occupied() const noexcept
@@ -86,10 +87,20 @@ namespace kawa
 					return _source.capacity();
 				}
 
+				inline size_t scoped_occupied() const noexcept
+				{
+					return _source.occupied() - _begin_occupied;
+				}
+
+				inline size_t scoped_entries_occupied() const noexcept
+				{
+					return _source.entries_occupied() - _scoped_entries;
+				}
+
 			private:
 				arena_allocator& _source;
 				size_t _begin_occupied = 0;
-				size_t _counter = 0;
+				size_t _scoped_entries = 0;
 		};
 
 	public:
@@ -101,7 +112,8 @@ namespace kawa
 			_current = _data;
 
 			_entries_capacity = entries;
-			_entries = new size_t[entries];
+			_sizes = new size_t[entries];
+			_strides = new size_t[entries];
 			_destructors = new destructor_fn_t[entries]();
 		}
 
@@ -111,22 +123,33 @@ namespace kawa
 			: _data(other._data)
 			, _current(other._current)
 			, _capacity(other._capacity)
-			, _entries(other._entries)
+			, _sizes(other._sizes)
+			, _strides(other._strides)
 			, _entries_capacity(other._entries_capacity)
 			, _entries_occupied(other._entries_occupied)
+			, _destructors(other._destructors)
 		{
 			other._data = nullptr;
 			other._current = nullptr;
 			other._capacity = 0;
-			other._entries = nullptr;
+			other._sizes = nullptr;
+			other._strides = nullptr;
+			other._destructors = nullptr;
+
 			other._entries_occupied = 0;
 			other._entries_capacity = 0;
 		}
 
 		inline ~arena_allocator() noexcept
 		{
+			while (_entries_occupied)
+			{
+				pop();
+			}
+
 			::operator delete(_data, std::align_val_t{ alignof(std::max_align_t) });
-			delete[] _entries;
+			delete[] _sizes;
+			delete[] _strides;
 			delete[] _destructors;
 		}
 
@@ -141,7 +164,9 @@ namespace kawa
 			size_t space = _capacity - (_current - _data);
 			if (std::align(alignof(T), sizeof(T), aligned, space)) 
 			{
-				_entries[_entries_occupied] = sizeof(T) + ((size_t)aligned - (size_t)_current);
+				_sizes[_entries_occupied] = sizeof(T);
+				_strides[_entries_occupied] = ((size_t)aligned - (size_t)_current);
+
 				_current = static_cast<char*>(aligned) + sizeof(T);
 
 				if constexpr (!std::is_trivially_destructible_v<T>)
@@ -172,7 +197,11 @@ namespace kawa
 
 			void* ptr = _current;
 			_current += size;
-			_entries[_entries_occupied++] = size;
+
+			_sizes[_entries_occupied] = size;
+			_strides[_entries_occupied] = 0;
+
+			_entries_occupied++;
 			return ptr;
 		}
 
@@ -182,7 +211,7 @@ namespace kawa
 
 			_entries_occupied--;
 
-			_current -= _entries[_entries_occupied];
+			_current -= _sizes[_entries_occupied];
 
 			destructor_fn_t dtor = _destructors[_entries_occupied];
 
@@ -191,11 +220,18 @@ namespace kawa
 				dtor(_current);
 				dtor = nullptr;
 			}
+
+			_current -= _strides[_entries_occupied];
 		}
 
 		inline size_t capacity() const noexcept
 		{
 			return _capacity;
+		}
+
+		inline size_t entries_occupied() const noexcept
+		{
+			return _entries_occupied;
 		}
 
 		inline size_t occupied() const noexcept
@@ -218,7 +254,8 @@ namespace kawa
 		size_t	_capacity				= 0;
 
 		size_t	_entries_capacity		= 0;
-		size_t* _entries				= nullptr;
+		size_t* _sizes					= nullptr;
+		size_t* _strides				= nullptr;
 		size_t	_entries_occupied		= 0;
 
 		destructor_fn_t* _destructors	= nullptr;

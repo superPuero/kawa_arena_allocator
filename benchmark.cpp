@@ -3,7 +3,7 @@
 #include <cassert>
 #include "arena_allocator.h" 
 
-struct TestData 
+struct TestData
 {
     ~TestData()
     {
@@ -12,7 +12,7 @@ struct TestData
     int a[16]; // 64 bytes
 };
 
-int main() 
+int main()
 {
     constexpr size_t arenas_size = 1024 * 1024 * 32; // 32 MB
     constexpr size_t entries = 500'000; // 32MB / 64
