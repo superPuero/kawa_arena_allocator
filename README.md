@@ -87,7 +87,6 @@ arena.pop(); // ← vector (dtor is called because vector is not trivially-destr
  │          ▲                             │
  │      _current                          │
  │                                        │
- │  _entries → [16][32][8] …              │  ← stride stack
  └─────────────────────────────────────────┘
 ```
 
